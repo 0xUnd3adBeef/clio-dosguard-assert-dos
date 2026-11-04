@@ -4,10 +4,21 @@
 set -e
 D="$(cd "$(dirname "$0")" && pwd)"
 W=$(mktemp -d)
+MOCK=""
+
+cleanup() {
+    [ -n "$MOCK" ] && kill "$MOCK" 2>/dev/null
+    podman rm -f clio-poc >/dev/null 2>&1
+    rm -rf "$W"
+}
+trap cleanup EXIT
+
 cp "$D/clio-config.json" "$W/cfg.json"
 cp "$D/cassandra_mock.py" "$W/"
 
-( cd "$W" && python3 -I cassandra_mock.py >mock.log 2>&1 & )
+cd "$W"
+python3 -I cassandra_mock.py >mock.log 2>&1 &
+MOCK=$!
 sleep 3
 
 podman rm -f clio-poc >/dev/null 2>&1 || true
@@ -28,6 +39,3 @@ sleep 2
 echo "== after =="
 echo "  container: $(podman ps -a --filter name=clio-poc --format '{{.Status}}')"
 podman logs clio-poc 2>&1 | grep -i 'assertion' | head -2 | sed 's/^/  /'
-
-echo
-echo "cleanup: podman rm -f clio-poc; rm -rf $W"
