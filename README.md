@@ -35,6 +35,16 @@ Any `params` that is present but not `[{...}]` triggers it: `"pwn"`, `1`, `[1]`,
 
 `params: [{}]` returns HTTP 200 and the process stays up. `params: "pwn"` drops the connection and the process is gone, with `Assertion failed` in the log.
 
+## Fix
+
+```cpp
+auto const it = request.find(JS(params));
+if (it == request.end() or not it->value().is_array() or it->value().as_array().empty() or not it->value().as_array().at(0).is_object())
+    return defaultWeight_;
+
+Or normalise params before invoking the DOS guard, matching the legacy ordering.
+```
+
 ## Disclosure
 
-Reported to the vendor on 2026-05-05. Re-tested against `ghcr.io/xrplf/clio:nightly` on 2026-11-04, still reproduces :p
+Reported to the vendor on 2026-05-05. Re-tested against `ghcr.io/xrplf/clio:nightly` on 2026-11-04, still reproduces 
